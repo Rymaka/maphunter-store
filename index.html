@@ -1,0 +1,47 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>MapHunter settings</title>
+<p>Settings storage for the MapHunter Deadlock mod. Nothing to see here.</p>
+<script>
+// MapHunter keeps its Deadlock settings in this page's localStorage, inside Steam's
+// browser profile. The mod opens the page in a hidden browser panel: requests come
+// in the URL #fragment (never sent to the server), answers go back through
+// document.title. Nothing is sent anywhere; the page only touches its own key.
+(function () {
+  "use strict";
+  var VERSION = 1;
+  var KEY = "maphunter/settings";
+  var PREFIX = "MHS1:";
+  var sequence = 0;
+
+  function reply(message) {
+    message.q = ++sequence; // the title must change even for identical answers
+    document.title = PREFIX + JSON.stringify(message);
+  }
+
+  function handle() {
+    var request;
+    try {
+      request = JSON.parse(decodeURIComponent(location.hash.slice(1)));
+    } catch (e) {
+      return;
+    }
+    if (!request || typeof request.i !== "string") return;
+    try {
+      if (request.o === "hello") {
+        reply({ i: request.i, o: "ready", ok: true, v: VERSION, h: location.origin + location.pathname });
+      } else if (request.o === "load") {
+        reply({ i: request.i, o: "load", ok: true, v: localStorage.getItem(KEY) || "" });
+      } else if (request.o === "save" && typeof request.v === "string" && request.v.length < 4000) {
+        localStorage.setItem(KEY, request.v);
+        reply({ i: request.i, o: "save", ok: true });
+      }
+    } catch (e) {
+      reply({ i: request.i, o: request.o, ok: false, e: String(e) });
+    }
+  }
+
+  window.addEventListener("hashchange", handle);
+  handle();
+})();
+</script>
